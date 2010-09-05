@@ -1,0 +1,3 @@
+#summary Class diagram of muduo network library.
+
+http://muduo.googlecode.com/files/muduo_class_diagram.png
