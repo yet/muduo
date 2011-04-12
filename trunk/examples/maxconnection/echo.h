@@ -8,7 +8,8 @@ class EchoServer
 {
  public:
   EchoServer(muduo::net::EventLoop* loop,
-             const muduo::net::InetAddress& listenAddr);
+             const muduo::net::InetAddress& listenAddr,
+             int maxConnections);
 
   void start();
 
@@ -21,6 +22,8 @@ class EchoServer
 
   muduo::net::EventLoop* loop_;
   muduo::net::TcpServer server_;
+  int numConnected_; // should be atomic_int
+  const int kMaxConnections;
 };
 
 #endif  // MUDUO_EXAMPLES_SIMPLE_ECHO_ECHO_H
