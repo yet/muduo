@@ -61,6 +61,7 @@ class Channel : boost::noncopyable
   // int revents() const { return revents_; }
 
   void enableReading() { events_ |= kReadEvent; update(); }
+  // void disableReading() { events_ &= ~kReadEvent; update(); }
   void enableWriting() { events_ |= kWriteEvent; update(); }
   void disableWriting() { events_ &= ~kWriteEvent; update(); }
   void disableAll() { events_ = kNoneEvent; update(); }
@@ -73,7 +74,7 @@ class Channel : boost::noncopyable
   // for debug
   string reventsToString() const;
 
-  EventLoop* getLoop() { return loop_; }
+  EventLoop* ownerLoop() { return loop_; }
 
  private:
   void update();
