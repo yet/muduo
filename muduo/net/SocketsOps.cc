@@ -140,6 +140,21 @@ int sockets::connect(int sockfd, const struct sockaddr_in& addr)
   return ::connect(sockfd, sockaddr_cast(&addr), sizeof addr);
 }
 
+ssize_t sockets::read(int sockfd, void *buf, size_t count)
+{
+  return ::read(sockfd, buf, count);
+}
+
+ssize_t sockets::readv(int sockfd, const struct iovec *iov, int iovcnt)
+{
+  return ::readv(sockfd, iov, iovcnt);
+}
+
+ssize_t sockets::write(int sockfd, const void *buf, size_t count)
+{
+  return ::write(sockfd, buf, count);
+}
+
 void sockets::close(int sockfd)
 {
   if (::close(sockfd) < 0)
@@ -170,7 +185,7 @@ void sockets::fromHostPort(const char* ip, uint16_t port,
 {
   addr->sin_family = AF_INET;
   addr->sin_port = hostToNetwork16(port);
-  if (inet_pton(AF_INET, ip, &addr->sin_addr) <= 0)
+  if (::inet_pton(AF_INET, ip, &addr->sin_addr) <= 0)
   {
     LOG_SYSERR << "sockets::fromHostPort";
   }
