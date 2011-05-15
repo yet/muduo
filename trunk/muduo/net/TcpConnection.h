@@ -118,14 +118,12 @@ class TcpConnection : boost::noncopyable,
   ConnectionCallback connectionCallback_;
   MessageCallback messageCallback_;
   WriteCompleteCallback writeCompleteCallback_;
-  ConnectionCallback closeCallback_;
+  CloseCallback closeCallback_;
   Buffer inputBuffer_;
+  Buffer outputBuffer_; // FIXME: use list<Buffer> as output buffer.
+  boost::any context_;
   // FIXME: creationTime_, lastReceiveTime_
   //        bytesReceived_, bytesSent_
-  // MutexLock mutex_;
-  // FIXME: use list<Buffer> as output buffer.
-  Buffer outputBuffer_;
-  boost::any context_;
 };
 
 typedef boost::shared_ptr<TcpConnection> TcpConnectionPtr;
