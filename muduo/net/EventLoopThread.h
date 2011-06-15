@@ -6,7 +6,7 @@
 
 // Author: Shuo Chen (chenshuo at chenshuo dot com)
 //
-// This is a public header file, it must only include public header files.
+// This is an internal header file, you should not include this.
 
 #ifndef MUDUO_NET_EVENTLOOPTHREAD_H
 #define MUDUO_NET_EVENTLOOPTHREAD_H
@@ -19,6 +19,9 @@
 
 namespace muduo
 {
+
+class Thread;
+
 namespace net
 {
 

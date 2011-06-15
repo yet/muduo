@@ -13,9 +13,6 @@ target_link_libraries(exception_test muduo_base)
 add_executable(fork_test Fork_test.cc)
 target_link_libraries(fork_test muduo_base)
 
-add_executable(mutex_test Mutex_test.cc)
-target_link_libraries(mutex_test muduo_base)
-
 add_executable(singleton_test Singleton_test.cc)
 target_link_libraries(singleton_test muduo_base)
 
@@ -24,9 +21,6 @@ target_link_libraries(singleton_threadlocal_test muduo_base)
 
 add_executable(timestamp_unittest Timestamp_unittest.cc)
 target_link_libraries(timestamp_unittest muduo_base)
-
-add_executable(thread_bench Thread_bench.cc)
-target_link_libraries(thread_bench muduo_base)
 
 add_executable(thread_test Thread_test.cc)
 target_link_libraries(thread_test muduo_base)

@@ -58,6 +58,8 @@ class EventLoop : boost::noncopyable
   ///
   Timestamp pollReturnTime() const { return pollReturnTime_; }
 
+  // timers
+
   /// Runs callback immediately in the loop thread.
   /// It wakes up the loop, and run the cb.
   /// If in the same loop thread, cb is run within the function.
@@ -67,28 +69,18 @@ class EventLoop : boost::noncopyable
   /// Runs after finish pooling.
   /// Safe to call from other threads.
   void queueInLoop(const Functor& cb);
-
-  // timers
-
-  ///
-  /// Runs callback at 'time'.
-  /// Safe to call from other threads.
   ///
   TimerId runAt(const Timestamp& time, const TimerCallback& cb);
   ///
   /// Runs callback after @c delay seconds.
   /// Safe to call from other threads.
-  ///
   TimerId runAfter(double delay, const TimerCallback& cb);
   ///
   /// Runs callback every @c interval seconds.
   /// Safe to call from other threads.
-  ///
   TimerId runEvery(double interval, const TimerCallback& cb);
-  ///
   /// Cancels the timer.
   /// Safe to call from other threads.
-  ///
   // void cancel(TimerId timerId);
 
   // internal usage
@@ -96,7 +88,7 @@ class EventLoop : boost::noncopyable
   void updateChannel(Channel* channel);
   void removeChannel(Channel* channel);
 
-  // pid_t threadId() const { return threadId_; }
+  pid_t threadId() const { return threadId_; }
   void assertInLoopThread()
   {
     if (!isInLoopThread())
@@ -120,8 +112,8 @@ class EventLoop : boost::noncopyable
   bool quit_; /* atomic */
   bool eventHandling_; /* atomic */
   bool callingPendingFunctors_; /* atomic */
-  const pid_t threadId_;
   Timestamp pollReturnTime_;
+  const pid_t threadId_;
   boost::scoped_ptr<Poller> poller_;
   boost::scoped_ptr<TimerQueue> timerQueue_;
   int wakeupFd_;

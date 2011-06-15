@@ -14,7 +14,7 @@ extern char favicon[555];
 
 void onRequest(const HttpRequest& req, HttpResponse* resp)
 {
-  std::cout << "Headers " << req.methodString() << " " << req.path() << std::endl;
+  std::cout << "Headers " << req.path() << std::endl;
   const std::map<string, string>& headers = req.headers();
   for (std::map<string, string>::const_iterator it = headers.begin();
        it != headers.end();

@@ -26,41 +26,25 @@ const int Connector::kMaxRetryDelayMs;
 Connector::Connector(EventLoop* loop, const InetAddress& serverAddr)
   : loop_(loop),
     serverAddr_(serverAddr),
-    connect_(false),
     state_(kDisconnected),
     retryDelayMs_(kInitRetryDelayMs)
 {
-  LOG_DEBUG << "ctor[" << this << "]";
 }
 
 Connector::~Connector()
 {
-  LOG_DEBUG << "dtor[" << this << "]";
   assert(!channel_);
 }
 
 void Connector::start()
 {
-  connect_ = true;
-  loop_->runInLoop(boost::bind(&Connector::startInLoop, this)); // FIXME: unsafe
+  loop_->runInLoop(boost::bind(&Connector::startInLoop, this));
 }
 
 void Connector::startInLoop()
 {
   loop_->assertInLoopThread();
   assert(state_ == kDisconnected);
-  if (connect_)
-  {
-    connect();
-  }
-  else
-  {
-    LOG_DEBUG << "do not connect";
-  }
-}
-
-void Connector::connect()
-{
   int sockfd = sockets::createNonblockingOrDie();
   int ret = sockets::connect(sockfd, serverAddr_.getSockAddrInet());
   int savedErrno = (ret == 0) ? 0 : errno;
@@ -102,17 +86,9 @@ void Connector::connect()
 
 void Connector::restart()
 {
-  loop_->assertInLoopThread();
   setState(kDisconnected);
   retryDelayMs_ = kInitRetryDelayMs;
-  connect_ = true;
   startInLoop();
-}
-
-void Connector::stop()
-{
-  connect_ = false;
-  // FIXME: cancel timer
 }
 
 void Connector::connecting(int sockfd)
@@ -121,12 +97,9 @@ void Connector::connecting(int sockfd)
   assert(!channel_);
   channel_.reset(new Channel(loop_, sockfd));
   channel_->setWriteCallback(
-      boost::bind(&Connector::handleWrite, this)); // FIXME: unsafe
+      boost::bind(&Connector::handleWrite, this));
   channel_->setErrorCallback(
-      boost::bind(&Connector::handleError, this)); // FIXME: unsafe
-
-  // channel_->tie(shared_from_this()); is not working,
-  // as channel_ is not managed by shared_ptr
+      boost::bind(&Connector::handleError, this));
   channel_->enableWriting();
 }
 
@@ -136,7 +109,7 @@ int Connector::removeAndResetChannel()
   loop_->removeChannel(get_pointer(channel_));
   int sockfd = channel_->fd();
   // Can't reset channel_ here, because we are inside Channel::handleEvent
-  loop_->queueInLoop(boost::bind(&Connector::resetChannel, this)); // FIXME: unsafe
+  loop_->queueInLoop(boost::bind(&Connector::resetChannel, this));
   return sockfd;
 }
 
@@ -147,7 +120,7 @@ void Connector::resetChannel()
 
 void Connector::handleWrite()
 {
-  LOG_TRACE << "Connector::handleWrite " << state_;
+  LOG_TRACE << "Connector::handleWrite";
 
   if (state_ == kConnecting)
   {
@@ -167,20 +140,8 @@ void Connector::handleWrite()
     else
     {
       setState(kConnected);
-      if (connect_)
-      {
-        newConnectionCallback_(sockfd);
-      }
-      else
-      {
-        sockets::close(sockfd);
-      }
+      newConnectionCallback_(sockfd);
     }
-  }
-  else
-  {
-    // what happened?
-    assert(state_ == kDisconnected);
   }
 }
 
@@ -199,17 +160,9 @@ void Connector::retry(int sockfd)
 {
   sockets::close(sockfd);
   setState(kDisconnected);
-  if (connect_)
-  {
-    LOG_INFO << "Connector::retry - Retry connecting to " << serverAddr_.toHostPort()
-             << " in " << retryDelayMs_ << " milliseconds. ";
-    loop_->runAfter(retryDelayMs_/1000.0,
-                    boost::bind(&Connector::startInLoop, shared_from_this()));
-    retryDelayMs_ = std::min(retryDelayMs_ * 2, kMaxRetryDelayMs);
-  }
-  else
-  {
-    LOG_DEBUG << "do not connect";
-  }
+  LOG_INFO << "Connector::retry - Retry connecting to " << serverAddr_.toHostPort()
+           << " in " << retryDelayMs_ << " milliseconds. ";
+  loop_->runAfter(retryDelayMs_/1000.0, boost::bind(&Connector::startInLoop, this));
+  retryDelayMs_ = std::min(retryDelayMs_ * 2, kMaxRetryDelayMs);
 }
 

@@ -29,7 +29,6 @@ class HttpResponse : public muduo::copyable
   {
     kUnknown,
     k200Ok = 200,
-    k301MovedPermanently = 301,
     k400BadRequest = 400,
     k404NotFound = 404,
   };
@@ -53,10 +52,7 @@ class HttpResponse : public muduo::copyable
   { return closeConnection_; }
 
   void setContentType(const string& contentType)
-  { addHeader("Content-Type", contentType); }
-
-  void addHeader(const string& key, const string& value)
-  { headers_[key] = value; }
+  { headers_["Content-Type"] = contentType; }
 
   void setBody(const string& body)
   { body_ = body; }

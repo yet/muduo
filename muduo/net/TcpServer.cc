@@ -23,10 +23,10 @@ using namespace muduo::net;
 
 TcpServer::TcpServer(EventLoop* loop,
                      const InetAddress& listenAddr,
-                     const string& nameArg)
+                     const string& _name)
   : loop_(CHECK_NOTNULL(loop)),
     hostport_(listenAddr.toHostPort()),
-    name_(nameArg),
+    name_(_name),
     acceptor_(new Acceptor(loop, listenAddr)),
     threadPool_(new EventLoopThreadPool(loop)),
     connectionCallback_(defaultConnectionCallback),
@@ -96,13 +96,12 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peerAddr)
   conn->setMessageCallback(messageCallback_);
   conn->setWriteCompleteCallback(writeCompleteCallback_);
   conn->setCloseCallback(
-      boost::bind(&TcpServer::removeConnection, this, _1)); // FIXME: unsafe
+      boost::bind(&TcpServer::removeConnection, this, _1));
   ioLoop->runInLoop(boost::bind(&TcpConnection::connectEstablished, conn));
 }
 
 void TcpServer::removeConnection(const TcpConnectionPtr& conn)
 {
-  // FIXME: unsafe
   loop_->runInLoop(boost::bind(&TcpServer::removeConnectionInLoop, this, conn));
 }
 

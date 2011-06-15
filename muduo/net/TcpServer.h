@@ -39,7 +39,7 @@ class TcpServer : boost::noncopyable
   //TcpServer(EventLoop* loop, const InetAddress& listenAddr);
   TcpServer(EventLoop* loop,
             const InetAddress& listenAddr,
-            const string& nameArg);
+            const string& _name);
   ~TcpServer();  // force out-line dtor, for scoped_ptr members.
 
   const string& hostport() const { return hostport_; }
@@ -60,7 +60,7 @@ class TcpServer : boost::noncopyable
   /// Starts the server if it's not listenning.
   ///
   /// It's harmless to call it multiple times.
-  /// Thread safe.
+  /// Not thread safe.
   void start();
 
   /// Set connection callback.
