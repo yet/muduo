@@ -17,8 +17,9 @@
 
 #include <errno.h>
 #include <fcntl.h>
-//#include <sys/types.h>
-//#include <sys/stat.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 using namespace muduo;
 using namespace muduo::net;

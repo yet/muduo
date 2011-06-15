@@ -13,7 +13,6 @@
 
 #include <muduo/net/InetAddress.h>
 
-#include <boost/enable_shared_from_this.hpp>
 #include <boost/function.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -26,8 +25,7 @@ namespace net
 class Channel;
 class EventLoop;
 
-class Connector : boost::noncopyable,
-                  public boost::enable_shared_from_this<Connector>
+class Connector : boost::noncopyable
 {
  public:
   typedef boost::function<void (int sockfd)> NewConnectionCallback;
@@ -38,9 +36,8 @@ class Connector : boost::noncopyable,
   void setNewConnectionCallback(const NewConnectionCallback& cb)
   { newConnectionCallback_ = cb; }
 
-  void start();  // can be called in any thread
-  void restart();  // must be called in loop thread
-  void stop();  // can be called in any thread
+  void start();
+  void restart();
 
   const InetAddress& serverAddress() const { return serverAddr_; }
 
@@ -51,7 +48,6 @@ class Connector : boost::noncopyable,
 
   void setState(States s) { state_ = s; }
   void startInLoop();
-  void connect();
   void connecting(int sockfd);
   void handleWrite();
   void handleError();
@@ -61,7 +57,6 @@ class Connector : boost::noncopyable,
 
   EventLoop* loop_;
   InetAddress serverAddr_;
-  bool connect_; // atomic
   States state_;  // FIXME: use atomic variable
   boost::scoped_ptr<Channel> channel_;
   NewConnectionCallback newConnectionCallback_;

@@ -3,11 +3,13 @@
 
 #include <muduo/base/Logging.h>
 #include <muduo/net/Buffer.h>
-#include <muduo/net/Endian.h>
+#include <muduo/net/SocketsOps.h>
 #include <muduo/net/TcpConnection.h>
 
 #include <boost/function.hpp>
 #include <boost/noncopyable.hpp>
+
+using muduo::Logger;
 
 class LengthHeaderCodec : boost::noncopyable
 {
@@ -27,10 +29,9 @@ class LengthHeaderCodec : boost::noncopyable
   {
     while (buf->readableBytes() >= kHeaderLen)
     {
-      // FIXME: use Buffer::readInt32()
       const void* data = buf->peek();
-      int32_t be32 = *static_cast<const int32_t*>(data);
-      const int32_t len = muduo::net::sockets::networkToHost32(be32);
+      int32_t tmp = *static_cast<const int32_t*>(data);
+      int32_t len = muduo::net::sockets::networkToHost32(tmp);
       if (len > 65536 || len < 0)
       {
         LOG_ERROR << "Invalid length " << len;
@@ -50,7 +51,6 @@ class LengthHeaderCodec : boost::noncopyable
     }
   }
 
-  // FIXME: TcpConnectionPtr
   void send(muduo::net::TcpConnection* conn, const muduo::string& message)
   {
     muduo::net::Buffer buf;

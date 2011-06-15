@@ -37,8 +37,8 @@ class Socket;
 /// TCP connection, for both client and server usage.
 ///
 /// This is an interface class, so don't expose too much details.
-class TcpConnection : boost::noncopyable,
-                      public boost::enable_shared_from_this<TcpConnection>
+class TcpConnection : public boost::enable_shared_from_this<TcpConnection>,
+                      boost::noncopyable
 {
  public:
   /// Constructs a TcpConnection with a connected sockfd
@@ -118,12 +118,11 @@ class TcpConnection : boost::noncopyable,
   ConnectionCallback connectionCallback_;
   MessageCallback messageCallback_;
   WriteCompleteCallback writeCompleteCallback_;
-  CloseCallback closeCallback_;
+  ConnectionCallback closeCallback_;
   Buffer inputBuffer_;
-  Buffer outputBuffer_; // FIXME: use list<Buffer> as output buffer.
+  // MutexLock mutex_;
+  Buffer outputBuffer_;
   boost::any context_;
-  // FIXME: creationTime_, lastReceiveTime_
-  //        bytesReceived_, bytesSent_
 };
 
 typedef boost::shared_ptr<TcpConnection> TcpConnectionPtr;

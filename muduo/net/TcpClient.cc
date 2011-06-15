@@ -21,6 +21,7 @@
 using namespace muduo;
 using namespace muduo::net;
 
+
 // TcpClient::TcpClient(EventLoop* loop)
 //   : loop_(loop)
 // {
@@ -31,27 +32,6 @@ using namespace muduo::net;
 //     serverAddr_(host, port)
 // {
 // }
-
-namespace muduo
-{
-namespace net
-{
-namespace detail
-{
-
-void removeConnection(EventLoop* loop, const TcpConnectionPtr& conn)
-{
-  loop->queueInLoop(boost::bind(&TcpConnection::connectDestroyed, conn));
-}
-
-void removeConnector(const ConnectorPtr& connector)
-{
-  //connector->
-}
-
-}
-}
-}
 
 TcpClient::TcpClient(EventLoop* loop,
                      const InetAddress& serverAddr,
@@ -68,32 +48,10 @@ TcpClient::TcpClient(EventLoop* loop,
   connector_->setNewConnectionCallback(
       boost::bind(&TcpClient::newConnection, this, _1));
   // FIXME setConnectFailedCallback
-  LOG_INFO << "TcpClient::TcpClient[" << name_
-           << "] - connector " << get_pointer(connector_);
 }
 
 TcpClient::~TcpClient()
 {
-  LOG_INFO << "TcpClient::~TcpClient[" << name_
-           << "] - connector " << get_pointer(connector_);
-  TcpConnectionPtr conn;
-  {
-    MutexLockGuard lock(mutex_);
-    conn = connection_;
-  }
-  if (conn)
-  {
-    // FIXME: not 100% safe, if we are in different thread
-    CloseCallback cb = boost::bind(&detail::removeConnection, loop_, _1);
-    loop_->runInLoop(
-        boost::bind(&TcpConnection::setCloseCallback, conn, cb));
-  }
-  else
-  {
-    connector_->stop();
-    // FIXME: HACK
-    loop_->runAfter(1, boost::bind(&detail::removeConnector, connector_));
-  }
 }
 
 void TcpClient::connect()
@@ -118,12 +76,6 @@ void TcpClient::disconnect()
   }
 }
 
-void TcpClient::stop()
-{
-  connect_ = false;
-  connector_->stop();
-}
-
 void TcpClient::newConnection(int sockfd)
 {
   loop_->assertInLoopThread();
@@ -142,7 +94,7 @@ void TcpClient::newConnection(int sockfd)
   conn->setMessageCallback(messageCallback_);
   conn->setWriteCompleteCallback(writeCompleteCallback_);
   conn->setCloseCallback(
-      boost::bind(&TcpClient::removeConnection, this, _1)); // FIXME: unsafe
+      boost::bind(&TcpClient::removeConnection, this, _1));
   {
     MutexLockGuard lock(mutex_);
     connection_ = conn;

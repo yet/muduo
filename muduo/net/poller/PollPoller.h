@@ -16,7 +16,7 @@
 #include <map>
 #include <vector>
 
-struct pollfd;
+#include <poll.h>
 
 namespace muduo
 {

@@ -6,7 +6,6 @@
 
 // Author: Shuo Chen (chenshuo at chenshuo dot com)
 
-#define __STDC_LIMIT_MACROS
 #include <muduo/net/TimerQueue.h>
 
 #include <muduo/base/Logging.h>
@@ -18,11 +17,10 @@
 
 #include <sys/timerfd.h>
 
-namespace muduo
-{
-namespace net
-{
-namespace detail
+using namespace muduo;
+using namespace muduo::net;
+
+namespace
 {
 
 int createTimerfd()
@@ -52,26 +50,15 @@ struct timespec howMuchTimeFromNow(Timestamp when)
   return ts;
 }
 
-void readTimerfd(int timerfd, Timestamp now)
-{
-  uint64_t howmany;
-  ssize_t n = ::read(timerfd, &howmany, sizeof howmany);
-  LOG_TRACE << "TimerQueue::handleRead() " << howmany << " at " << now.toString();
-  if (n != sizeof howmany)
-  {
-    LOG_ERROR << "TimerQueue::handleRead() reads " << n << " bytes instead of 8";
-  }
-}
-
-void resetTimerfd(int timerfd, Timestamp expiration)
+void resetTimerfd(int timerfd, Timestamp when)
 {
   // wake up loop by timerfd_settime()
   struct itimerspec newValue;
   struct itimerspec oldValue;
   bzero(&newValue, sizeof newValue);
   bzero(&oldValue, sizeof oldValue);
-  newValue.it_value = howMuchTimeFromNow(expiration);
-  int ret = ::timerfd_settime(timerfd, 0, &newValue, &oldValue);
+  newValue.it_value = howMuchTimeFromNow(when);
+  int ret = timerfd_settime(timerfd, 0, &newValue, &oldValue);
   if (ret)
   {
     LOG_SYSERR << "timerfd_settime()";
@@ -79,12 +66,6 @@ void resetTimerfd(int timerfd, Timestamp expiration)
 }
 
 }
-}
-}
-
-using namespace muduo;
-using namespace muduo::net;
-using namespace muduo::net::detail;
 
 TimerQueue::TimerQueue(EventLoop* loop)
   : loop_(loop),
@@ -105,83 +86,68 @@ TimerQueue::~TimerQueue()
   for (TimerList::iterator it = timers_.begin();
       it != timers_.end(); ++it)
   {
-    delete it->second;
+    delete *it;
   }
 }
 
-TimerId TimerQueue::addTimer(const TimerCallback& cb,
-                             Timestamp when,
-                             double interval)
-{
-  Timer* timer = new Timer(cb, when, interval);
-  loop_->runInLoop(
-      boost::bind(&TimerQueue::scheduleInLoop, this, timer));
-  return TimerId(timer, timer->sequence());
-}
-
-void TimerQueue::scheduleInLoop(Timer* timer)
-{
-  loop_->assertInLoopThread();
-  bool earliestChanged = insert(timer);
-
-  if (earliestChanged)
-  {
-    resetTimerfd(timerfd_, timer->expiration());
-  }
-}
-
+// FIXME replace linked-list operations with binary-heap.
 void TimerQueue::handleRead()
 {
   loop_->assertInLoopThread();
   Timestamp now(Timestamp::now());
-  readTimerfd(timerfd_, now);
+  uint64_t howmany;
+  ssize_t n = ::read(timerfd_, &howmany, sizeof howmany);
+  LOG_TRACE << "TimerQueue::handleRead() " << howmany << " at " << now.toString();
+  if (n != sizeof howmany)
+  {
+    LOG_ERROR << "TimerQueue::handleRead() reads " << n << " bytes instead of 8";
+  }
 
-  std::vector<Entry> expired = getExpired(now);
+  TimerList expired;
+
+  // move out all expired timers
+  {
+    MutexLockGuard lock(mutex_);
+    // shall never callback in critical section
+    TimerList::iterator it = timers_.begin();
+    while (it != timers_.end() && (*it)->expiration() <= now)
+    {
+      ++it;
+    }
+    assert(it == timers_.end() || (*it)->expiration() > now);
+    expired.splice(expired.begin(), timers_, timers_.begin(), it);
+  }
 
   // safe to callback outside critical section
-  for (std::vector<Entry>::iterator it = expired.begin();
+  for (TimerList::iterator it = expired.begin();
       it != expired.end(); ++it)
   {
-    it->second->run();
+    (*it)->run();
   }
 
-  reset(expired, now);
-}
-
-std::vector<TimerQueue::Entry> TimerQueue::getExpired(Timestamp now)
-{
-  std::vector<Entry> expired;
-  Entry sentry = std::make_pair(now, reinterpret_cast<Timer*>(UINTPTR_MAX));
-  TimerList::iterator it = timers_.lower_bound(sentry);
-  assert(it == timers_.end() || now < it->first);
-  std::copy(timers_.begin(), it, back_inserter(expired));
-  timers_.erase(timers_.begin(), it);
-
-  return expired;
-}
-
-void TimerQueue::reset(const std::vector<Entry>& expired, Timestamp now)
-{
   Timestamp nextExpire;
-
-  for (std::vector<Entry>::const_iterator it = expired.begin();
-      it != expired.end(); ++it)
   {
-    if (it->second->repeat())
-    {
-      it->second->restart(now);
-      insert(it->second);
-    }
-    else
-    {
-      // FIXME move to a free list
-      delete it->second;
-    }
-  }
+    MutexLockGuard lock(mutex_);
+    // shall never callback in critical section
 
-  if (!timers_.empty())
-  {
-    nextExpire = timers_.begin()->second->expiration();
+    for (TimerList::iterator it = expired.begin();
+        it != expired.end(); ++it)
+    {
+      if ((*it)->repeat())
+      {
+        (*it)->restart(now);
+        insertWithLockHold(*it);
+      }
+      else
+      {
+        // FIXME move to a free list
+        delete *it;
+      }
+    }
+    if (!timers_.empty())
+    {
+      nextExpire = timers_.front()->expiration();
+    }
   }
 
   if (nextExpire.valid())
@@ -190,17 +156,44 @@ void TimerQueue::reset(const std::vector<Entry>& expired, Timestamp now)
   }
 }
 
-bool TimerQueue::insert(Timer* timer)
+TimerId TimerQueue::schedule(const TimerCallback& cb,
+                             Timestamp when,
+                             double interval)
+{
+  Timer* timer = new Timer(cb, when, interval);
+
+  bool earliestChanged = false;
+  {
+    MutexLockGuard lock(mutex_);
+    // shall never callback in critical section
+    earliestChanged = insertWithLockHold(timer);
+  }
+  if (earliestChanged)
+  {
+    resetTimerfd(timerfd_, when);
+  }
+
+  return TimerId(timer);
+}
+
+bool TimerQueue::insertWithLockHold(Timer* timer)
 {
   bool earliestChanged = false;
   Timestamp when = timer->expiration();
   TimerList::iterator it = timers_.begin();
-  if (it == timers_.end() || when < it->first)
+  if (it == timers_.end() || (*it)->expiration() > when)
   {
+    timers_.push_front(timer);
     earliestChanged = true;
   }
-  std::pair<TimerList::iterator, bool> result = timers_.insert(std::make_pair(when, timer));
-  assert(result.second); (void)result;
+  else
+  {
+    while (it != timers_.end() && (*it)->expiration() < when)
+    {
+      ++it;
+    }
+    timers_.insert(it, timer);
+  }
   return earliestChanged;
 }
 
