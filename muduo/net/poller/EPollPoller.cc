@@ -128,7 +128,7 @@ void EPollPoller::updateChannel(Channel* channel)
     assert(channels_.find(fd) != channels_.end());
     assert(channels_[fd] == channel);
     assert(index == kAdded);
-    if (channel->isNoneEvent())
+    if (channel->events() == Channel::kNoneEvent)
     {
       update(EPOLL_CTL_DEL, channel);
       channel->set_index(kDeleted);
@@ -147,7 +147,7 @@ void EPollPoller::removeChannel(Channel* channel)
   LOG_TRACE << "fd = " << fd;
   assert(channels_.find(fd) != channels_.end());
   assert(channels_[fd] == channel);
-  assert(channel->isNoneEvent());
+  assert(channel->events() == Channel::kNoneEvent);
   int index = channel->index();
   assert(index == kAdded || index == kDeleted);
   size_t n = channels_.erase(fd);

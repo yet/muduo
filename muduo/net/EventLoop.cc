@@ -13,7 +13,6 @@
 #include <muduo/base/Singleton.h>
 #include <muduo/net/Channel.h>
 #include <muduo/net/Poller.h>
-#include <muduo/net/SocketsOps.h>
 #include <muduo/net/TimerQueue.h>
 
 #include <boost/bind.hpp>
@@ -96,7 +95,6 @@ void EventLoop::loop()
   looping_ = true;
   quit_ = false;
   LOG_TRACE << "EventLoop " << this << " start looping";
-
   while (!quit_)
   {
     activeChannels_.clear();
@@ -115,7 +113,6 @@ void EventLoop::loop()
     eventHandling_ = false;
     doPendingFunctors();
   }
-
   LOG_TRACE << "EventLoop " << this << " stop looping";
   looping_ = false;
 }
@@ -126,6 +123,16 @@ void EventLoop::quit()
   if (!isInLoopThread())
   {
     wakeup();
+  }
+}
+
+void EventLoop::wakeup()
+{
+  uint64_t one = 1;
+  ssize_t n = ::write(wakeupFd_, &one, sizeof one);
+  if (n != sizeof one)
+  {
+    LOG_ERROR << "EventLoop::wakeup() writes " << n << " bytes instead of 8";
   }
 }
 
@@ -157,7 +164,7 @@ void EventLoop::queueInLoop(const Functor& cb)
 
 TimerId EventLoop::runAt(const Timestamp& time, const TimerCallback& cb)
 {
-  return timerQueue_->addTimer(cb, time, 0.0);
+  return timerQueue_->schedule(cb, time, 0.0);
 }
 
 TimerId EventLoop::runAfter(double delay, const TimerCallback& cb)
@@ -169,47 +176,35 @@ TimerId EventLoop::runAfter(double delay, const TimerCallback& cb)
 TimerId EventLoop::runEvery(double interval, const TimerCallback& cb)
 {
   Timestamp time(addTime(Timestamp::now(), interval));
-  return timerQueue_->addTimer(cb, time, interval);
+  return timerQueue_->schedule(cb, time, interval);
 }
 
 void EventLoop::updateChannel(Channel* channel)
 {
-  assert(channel->ownerLoop() == this);
+  assert(channel->getLoop() == this);
   assertInLoopThread();
   poller_->updateChannel(channel);
 }
 
 void EventLoop::removeChannel(Channel* channel)
 {
-  assert(channel->ownerLoop() == this);
+  assert(channel->getLoop() == this);
   assertInLoopThread();
   poller_->removeChannel(channel);
 }
 
 void EventLoop::abortNotInLoopThread()
 {
-  LOG_FATAL << "EventLoop::abortNotInLoopThread - EventLoop " << this
-            << " was created in threadId_ = " << threadId_
-            << ", current thread id = " <<  CurrentThread::tid();
-}
-
-void EventLoop::wakeup()
-{
-  uint64_t one = 1;
-  ssize_t n = sockets::write(wakeupFd_, &one, sizeof one);
-  if (n != sizeof one)
-  {
-    LOG_ERROR << "EventLoop::wakeup() writes " << n << " bytes instead of 8";
-  }
+  LOG_FATAL << "threadId_=" << threadId_;
 }
 
 void EventLoop::handleRead()
 {
   uint64_t one = 1;
-  ssize_t n = sockets::read(wakeupFd_, &one, sizeof one);
+  ssize_t n = ::read(wakeupFd_, &one, sizeof one);
   if (n != sizeof one)
   {
-    LOG_ERROR << "EventLoop::handleRead() reads " << n << " bytes instead of 8";
+    LOG_ERROR << "EventLoop::wakeup() reads " << n << " bytes instead of 8";
   }
 }
 
@@ -219,8 +214,8 @@ void EventLoop::doPendingFunctors()
   callingPendingFunctors_ = true;
 
   {
-  MutexLockGuard lock(mutex_);
-  functors.swap(pendingFunctors_);
+    MutexLockGuard lock(mutex_);
+    functors.swap(pendingFunctors_);
   }
 
   for (size_t i = 0; i < functors.size(); ++i)

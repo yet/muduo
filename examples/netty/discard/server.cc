@@ -10,6 +10,7 @@
 
 #include <utility>
 
+#include <mcheck.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -84,6 +85,7 @@ class DiscardServer
 
 int main(int argc, char* argv[])
 {
+  mtrace();
   LOG_INFO << "pid = " << getpid() << ", tid = " << CurrentThread::tid();
   if (argc > 1)
   {
