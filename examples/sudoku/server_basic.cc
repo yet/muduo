@@ -55,37 +55,63 @@ class SudokuServer
       if (crlf)
       {
         string request(buf->peek(), crlf);
-        string id;
         buf->retrieveUntil(crlf + 2);
-        string::iterator colon = find(request.begin(), request.end(), ':');
-        if (colon != request.end())
-        {
-          id.assign(request.begin(), colon);
-          request.erase(request.begin(), colon+1);
-        }
-        if (request.size() == implicit_cast<size_t>(kCells))
-        {
-          string result = solveSudoku(request);
-          if (id.empty())
-          {
-            conn->send(result+"\r\n");
-          }
-          else
-          {
-            conn->send(id+":"+result+"\r\n");
-          }
-        }
-        else
+        len = buf->readableBytes();
+        if (!processRequest(conn, request))
         {
           conn->send("Bad Request!\r\n");
           conn->shutdown();
+          break;
         }
+      }
+      else if (len > 100) // id + ":" + kCells + "\r\n"
+      {
+        conn->send("Id too long!\r\n");
+        conn->shutdown();
+        break;
       }
       else
       {
         break;
       }
     }
+  }
+
+  bool processRequest(const TcpConnectionPtr& conn, const string& request)
+  {
+    string id;
+    string puzzle;
+    bool goodRequest = true;
+
+    string::const_iterator colon = find(request.begin(), request.end(), ':');
+    if (colon != request.end())
+    {
+      id.assign(request.begin(), colon);
+      puzzle.assign(colon+1, request.end());
+    }
+    else
+    {
+      puzzle = request;
+    }
+
+    if (puzzle.size() == implicit_cast<size_t>(kCells))
+    {
+      LOG_DEBUG << conn->name();
+      string result = solveSudoku(puzzle);
+      if (id.empty())
+      {
+        conn->send(result+"\r\n");
+      }
+      else
+      {
+        conn->send(id+":"+result+"\r\n");
+      }
+    }
+    else
+    {
+      goodRequest = false;
+    }
+    return goodRequest;
   }
 
   EventLoop* loop_;
