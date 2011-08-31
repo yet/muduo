@@ -73,8 +73,8 @@ https://github.com/chenshuo/muduo-tutorial
 === Check examples in Muduo ===
 Muduo has a handful examples, in {{{ muduo/examples }}} http://code.google.com/p/muduo/source/browse/trunk/examples/ .
 
-See WalkingThroughExamples.
+See MuduoExamples.
 
 === Read the Tutorial ===
 
-See Tutorial.
+See MuduoTutorial.
