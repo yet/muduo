@@ -1,3 +1,17 @@
 #summary Class diagram of muduo network library.
 
 http://muduo.googlecode.com/files/muduo_class_diagram.png
+
+= Class Diagram =
+
+== User visible classes ==
+  * EventLoop is a reactor.
+  * TcpConnection is an _established_ TCP connection.
+  * TcpConnection has two Buffer(s), one for input, the other for output
+  * TcpClient
+  * TcpServer
+
+== Internal classes ==
+  * Acceptor, owned and used by TcpServer.
+  * Connector, owned and used by TcpClient.
+  * Poller, base class, owned and used by EventLoop
