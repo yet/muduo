@@ -38,10 +38,16 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 find_package(Boost REQUIRED)
 find_package(Protobuf)
 find_path(PROTOBUF_PLUGIN google/protobuf/compiler/cpp/cpp_generator.h)
+find_path(CARES_INCLUDE_DIR ares.h)
+find_library(CARES_LIBRARY NAMES cares)
 
 include_directories(${Boost_INCLUDE_DIRS})
 
 include_directories(${PROJECT_SOURCE_DIR})
+
+string(TOUPPER ${CMAKE_BUILD_TYPE} BUILD_TYPE)
+message(STATUS "CXX_FLAGS = " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_${BUILD_TYPE}})
+# message(STATUS "INCLUDE_DIRS = " ??? )
 
 add_subdirectory(muduo/base)
 add_subdirectory(muduo/net)
