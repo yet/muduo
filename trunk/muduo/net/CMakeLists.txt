@@ -31,6 +31,7 @@ set(HEADERS
   Endian.h
   EventLoop.h
   EventLoopThread.h
+  EventLoopThreadPool.h
   InetAddress.h
   TcpClient.h
   TcpConnection.h
@@ -45,12 +46,6 @@ add_subdirectory(tests)
 
 if(PROTOBUF_FOUND)
   add_subdirectory(protorpc)
-  if(PROTOBUF_PLUGIN)
-    add_subdirectory(protorpc2)
-  else()
-    add_subdirectory(protorpc2 EXCLUDE_FROM_ALL)
-  endif()
 else()
   add_subdirectory(protorpc EXCLUDE_FROM_ALL)
-  add_subdirectory(protorpc2 EXCLUDE_FROM_ALL)
 endif()
