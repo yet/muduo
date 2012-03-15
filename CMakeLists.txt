@@ -12,7 +12,6 @@ set(CXX_FLAGS
  # -DMUDUO_STD_STRING
  -Wall
  -Wextra
- # -m32
  -Werror
  -Wconversion
  -Wno-unused-parameter
@@ -26,6 +25,9 @@ set(CXX_FLAGS
  # -std=c++0x
  -rdynamic
  )
+if(CMAKE_BUILD_BITS EQUAL 32)
+  list(APPEND CXX_FLAGS "-m32")
+endif()
 string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CXX_FLAGS}")
 
 set(CMAKE_CXX_COMPILER "g++")
@@ -37,7 +39,6 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
 find_package(Boost REQUIRED)
 find_package(Protobuf)
-find_path(PROTOBUF_PLUGIN google/protobuf/compiler/cpp/cpp_generator.h)
 find_path(CARES_INCLUDE_DIR ares.h)
 find_library(CARES_LIBRARY NAMES cares)
 
@@ -47,10 +48,11 @@ include_directories(${PROJECT_SOURCE_DIR})
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} BUILD_TYPE)
 message(STATUS "CXX_FLAGS = " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_${BUILD_TYPE}})
-# message(STATUS "INCLUDE_DIRS = " ??? )
 
 add_subdirectory(muduo/base)
 add_subdirectory(muduo/net)
 
-add_subdirectory(examples)
+if(NOT CMAKE_BUILD_NO_EXAMPLES)
+  add_subdirectory(examples)
+endif()
 
