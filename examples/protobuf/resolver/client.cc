@@ -1,4 +1,4 @@
-#include <examples/protobuf/rpc/sudoku.pb.h>
+#include <examples/protobuf/resolver/resolver.pb.h>
 
 #include <muduo/base/Logging.h>
 #include <muduo/net/EventLoop.h>
@@ -6,6 +6,8 @@
 #include <muduo/net/TcpClient.h>
 #include <muduo/net/TcpConnection.h>
 #include <muduo/net/protorpc/RpcChannel.h>
+
+#include <arpa/inet.h>  // inet_ntop
 
 #include <boost/bind.hpp>
 
@@ -21,6 +23,8 @@ class RpcClient : boost::noncopyable
     : loop_(loop),
       client_(loop, serverAddr, "RpcClient"),
       channel_(new RpcChannel),
+      got_(0),
+      total_(0),
       stub_(get_pointer(channel_))
   {
     client_.setConnectionCallback(
@@ -42,24 +46,50 @@ class RpcClient : boost::noncopyable
     {
       //channel_.reset(new RpcChannel(conn));
       channel_->setConnection(conn);
-      sudoku::SudokuRequest request;
-      request.set_checkerboard("001010");
-      sudoku::SudokuResponse* response = new sudoku::SudokuResponse;
-
-      stub_.Solve(NULL, &request, response, NewCallback(this, &RpcClient::solved, response));
+      total_ = 4;
+      resolve("www.example.com");
+      resolve("www.chenshuo.com");
+      resolve("www.google.com");
+      resolve("acme.chenshuo.org");
     }
   }
 
-  void solved(sudoku::SudokuResponse* resp)
+  void resolve(const std::string& host)
   {
-    LOG_INFO << "solved:\n" << resp->DebugString().c_str();
-    loop_->quit();
+    resolver::ResolveRequest request;
+    request.set_address(host);
+    resolver::ResolveResponse* response = new resolver::ResolveResponse;
+
+    stub_.Resolve(NULL, &request, response,
+        NewCallback(this, &RpcClient::resolved, response, host));
+  }
+
+  void resolved(resolver::ResolveResponse* resp, std::string host)
+  {
+    if (resp->resolved())
+    {
+      char buf[32];
+      uint32_t ip = resp->ip(0);
+      inet_ntop(AF_INET, &ip, buf, sizeof buf);
+
+      LOG_INFO << "resolved " << host << " : " << buf << "\n"
+               << resp->DebugString().c_str();
+    }
+    else
+    {
+      LOG_INFO << "resolved " << host << " failed";
+    }
+
+    if (++got_ >= total_)
+      loop_->quit();
   }
 
   EventLoop* loop_;
   TcpClient client_;
   RpcChannelPtr channel_;
-  sudoku::SudokuService::Stub stub_;
+  int got_;
+  int total_;
+  resolver::ResolverService::Stub stub_;
 };
 
 int main(int argc, char* argv[])
@@ -68,12 +98,11 @@ int main(int argc, char* argv[])
   if (argc > 1)
   {
     EventLoop loop;
-    InetAddress serverAddr(argv[1], 9981);
+    InetAddress serverAddr(argv[1], 2053);
 
     RpcClient rpcClient(&loop, serverAddr);
     rpcClient.connect();
     loop.loop();
-    google::protobuf::ShutdownProtobufLibrary();
   }
   else
   {
