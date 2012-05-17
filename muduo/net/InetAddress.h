@@ -42,12 +42,17 @@ class InetAddress : public muduo::copyable
     : addr_(addr)
   { }
 
-  string toHostPort() const;
+  string toIpPort() const;
+  string toHostPort() const __attribute__ ((deprecated))
+  { return toIpPort(); }
 
   // default copy/assignment are Okay
 
   const struct sockaddr_in& getSockAddrInet() const { return addr_; }
   void setSockAddrInet(const struct sockaddr_in& addr) { addr_ = addr; }
+
+  uint32_t ipNetEndian() const { return addr_.sin_addr.s_addr; }
+  uint16_t portNetEndian() const { return addr_.sin_port; }
 
  private:
   struct sockaddr_in addr_;

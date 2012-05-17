@@ -2,6 +2,7 @@ set(base_SRCS
   CountDownLatch.cc
   Date.cc
   Exception.cc
+  FileUtil.cc
   Logging.cc
   ProcessInfo.cc
   Timestamp.cc
@@ -16,4 +17,6 @@ install(TARGETS muduo_base DESTINATION lib)
 file(GLOB HEADERS "*.h")
 install(FILES ${HEADERS} DESTINATION include/muduo/base)
 
-add_subdirectory(tests)
+if(NOT CMAKE_BUILD_NO_EXAMPLES)
+  add_subdirectory(tests)
+endif()
