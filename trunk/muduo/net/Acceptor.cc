@@ -27,7 +27,7 @@ Acceptor::Acceptor(EventLoop* loop, const InetAddress& listenAddr)
     acceptSocket_(sockets::createNonblockingOrDie()),
     acceptChannel_(loop, acceptSocket_.fd()),
     listenning_(false),
-    idleFd_(::open("/dev/null", O_RDONLY))
+    idleFd_(::open("/dev/null", O_RDONLY | O_CLOEXEC))
 {
   acceptSocket_.setReuseAddr(true);
   acceptSocket_.bindAddress(listenAddr);
@@ -56,7 +56,7 @@ void Acceptor::handleRead()
   int connfd = acceptSocket_.accept(&peerAddr);
   if (connfd >= 0)
   {
-    // string hostport = peerAddr.toHostPort();
+    // string hostport = peerAddr.toIpPort();
     // LOG_TRACE << "Accepts of " << hostport;
     if (newConnectionCallback_)
     {
@@ -77,7 +77,7 @@ void Acceptor::handleRead()
       ::close(idleFd_);
       idleFd_ = ::accept(acceptSocket_.fd(), NULL, NULL);
       ::close(idleFd_);
-      idleFd_ = ::open("/dev/null", O_RDONLY);
+      idleFd_ = ::open("/dev/null", O_RDONLY | O_CLOEXEC);
     }
   }
 }
