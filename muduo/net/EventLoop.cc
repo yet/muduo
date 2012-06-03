@@ -56,11 +56,17 @@ class IgnoreSigPipe
 IgnoreSigPipe initObj;
 }
 
+EventLoop* EventLoop::getEventLoopOfCurrentThread()
+{
+  return t_loopInThisThread;
+}
+
 EventLoop::EventLoop()
   : looping_(false),
     quit_(false),
     eventHandling_(false),
     callingPendingFunctors_(false),
+    iteration_(0),
     threadId_(CurrentThread::tid()),
     poller_(Poller::newDefaultPoller(this)),
     timerQueue_(new TimerQueue(this)),
@@ -102,6 +108,7 @@ void EventLoop::loop()
   {
     activeChannels_.clear();
     pollReturnTime_ = poller_->poll(kPollTimeMs, &activeChannels_);
+    ++iteration_;
     if (Logger::logLevel() <= Logger::TRACE)
     {
       printActiveChannels();
@@ -152,7 +159,7 @@ void EventLoop::queueInLoop(const Functor& cb)
   pendingFunctors_.push_back(cb);
   }
 
-  if (isInLoopThread() && callingPendingFunctors_)
+  if (!isInLoopThread() || callingPendingFunctors_)
   {
     wakeup();
   }
