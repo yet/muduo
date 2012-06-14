@@ -26,6 +26,10 @@ To install required packages on Ubuntu/Debian
 $ sudo apt-get install libboost_VER_-dev cmake g++
 }}}
 
+Optional, install C-ares DNS and Google Protobuf, more examples will be built.
+{{{
+$ sudo apt-get install protobuf-compiler libprotobuf-dev libc-ares-dev
+}}}
 == Steps to build & install ==
 
 === Download latest source tarball ===
