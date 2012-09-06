@@ -59,7 +59,7 @@ void EchoServer::onMessage(const TcpConnectionPtr& conn,
                            Buffer* buf,
                            Timestamp time)
 {
-  string msg(buf->retrieveAsString());
+  string msg(buf->retrieveAllAsString());
   LOG_INFO << conn->name() << " echo " << msg.size()
            << " bytes at " << time.toString();
   conn->send(msg);
@@ -82,7 +82,7 @@ void EchoServer::onTimer()
 
 void EchoServer::dumpConnectionBuckets() const
 {
-  LOG_DEBUG << "size = " << connectionBuckets_.size();
+  LOG_INFO << "size = " << connectionBuckets_.size();
   int idx = 0;
   for (WeakConnectionList::const_iterator bucketI = connectionBuckets_.begin();
       bucketI != connectionBuckets_.end();

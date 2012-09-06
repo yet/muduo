@@ -1,11 +1,23 @@
-#ifndef MUDUO_EXAMPLES_SIMPLE_ECHO_ECHO_H
-#define MUDUO_EXAMPLES_SIMPLE_ECHO_ECHO_H
+#ifndef MUDUO_EXAMPLES_IDLECONNECTION_ECHO_H
+#define MUDUO_EXAMPLES_IDLECONNECTION_ECHO_H
 
 #include <muduo/net/TcpServer.h>
 //#include <muduo/base/Types.h>
 
 #include <boost/circular_buffer.hpp>
 #include <boost/unordered_set.hpp>
+#include <boost/version.hpp>
+
+#if BOOST_VERSION < 104700
+namespace boost
+{
+template <typename T>
+inline size_t hash_value(const boost::shared_ptr<T>& x)
+{
+  return boost::hash_value(x.get());
+}
+}
+#endif
 
 // RFC 862
 class EchoServer
@@ -32,7 +44,7 @@ class EchoServer
 
   struct Entry : public muduo::copyable
   {
-    Entry(const WeakTcpConnectionPtr& weakConn)
+    explicit Entry(const WeakTcpConnectionPtr& weakConn)
       : weakConn_(weakConn)
     {
     }
@@ -58,4 +70,4 @@ class EchoServer
   WeakConnectionList connectionBuckets_;
 };
 
-#endif  // MUDUO_EXAMPLES_SIMPLE_ECHO_ECHO_H
+#endif  // MUDUO_EXAMPLES_IDLECONNECTION_ECHO_H
