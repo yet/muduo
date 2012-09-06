@@ -1,5 +1,6 @@
 #include <muduo/base/AsyncLogging.h>
 #include <muduo/base/LogFile.h>
+#include <muduo/base/Timestamp.h>
 
 #include <stdio.h>
 
@@ -58,7 +59,7 @@ void AsyncLogging::threadFunc()
   BufferPtr newBuffer2(new Buffer);
   newBuffer1->bzero();
   newBuffer2->bzero();
-  boost::ptr_vector<Buffer> buffersToWrite;
+  BufferVector buffersToWrite;
   buffersToWrite.reserve(16);
   while (running_)
   {
@@ -68,7 +69,10 @@ void AsyncLogging::threadFunc()
 
     {
       muduo::MutexLockGuard lock(mutex_);
-      cond_.waitForSeconds(flushInterval_);
+      if (buffers_.empty())  // unusual usage!
+      {
+        cond_.waitForSeconds(flushInterval_);
+      }
       buffers_.push_back(currentBuffer_.release());
       currentBuffer_ = boost::ptr_container::move(newBuffer1);
       buffersToWrite.swap(buffers_);
@@ -82,10 +86,13 @@ void AsyncLogging::threadFunc()
 
     if (buffersToWrite.size() > 25)
     {
-      const char* dropMsg = "Dropped log messages\n";
-      fprintf(stderr, "%s", dropMsg);
-      output.append(dropMsg, static_cast<int>(strlen(dropMsg)));
-      buffersToWrite.erase(buffersToWrite.begin(), buffersToWrite.end() - 2);
+      char buf[256];
+      snprintf(buf, sizeof buf, "Dropped log messages at %s, %zd larger buffers\n",
+               Timestamp::now().toFormattedString().c_str(),
+               buffersToWrite.size()-2);
+      fputs(buf, stderr);
+      output.append(buf, static_cast<int>(strlen(buf)));
+      buffersToWrite.erase(buffersToWrite.begin()+2, buffersToWrite.end());
     }
 
     for (size_t i = 0; i < buffersToWrite.size(); ++i)

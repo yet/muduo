@@ -122,7 +122,7 @@ void TcpConnection::send(Buffer* buf)
       loop_->runInLoop(
           boost::bind(&TcpConnection::sendInLoop,
                       this,     // FIXME
-                      buf->retrieveAsString()));
+                      buf->retrieveAllAsString()));
                     //std::forward<string>(message)));
     }
   }
@@ -244,7 +244,8 @@ void TcpConnection::handleRead(Timestamp receiveTime)
   }
   else
   {
-    // FIXME: check savedErrno
+    errno = savedErrno;
+    LOG_SYSERR << "TcpConnection::handleRead";
     handleError();
   }
 }
@@ -280,6 +281,10 @@ void TcpConnection::handleWrite()
     else
     {
       LOG_SYSERR << "TcpConnection::handleWrite";
+      // if (state_ == kDisconnecting)
+      // {
+      //   shutdownInLoop();
+      // }
     }
   }
   else

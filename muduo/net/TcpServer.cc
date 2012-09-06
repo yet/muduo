@@ -89,8 +89,12 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peerAddr)
            << "] from " << peerAddr.toIpPort();
   InetAddress localAddr(sockets::getLocalAddr(sockfd));
   // FIXME poll with zero timeout to double confirm the new connection
-  TcpConnectionPtr conn(
-      new TcpConnection(ioLoop, connName, sockfd, localAddr, peerAddr));
+  // FIXME use make_shared if necessary
+  TcpConnectionPtr conn(new TcpConnection(ioLoop,
+                                          connName,
+                                          sockfd,
+                                          localAddr,
+                                          peerAddr));
   connections_[connName] = conn;
   conn->setConnectionCallback(connectionCallback_);
   conn->setMessageCallback(messageCallback_);
@@ -117,9 +121,5 @@ void TcpServer::removeConnectionInLoop(const TcpConnectionPtr& conn)
   EventLoop* ioLoop = conn->getLoop();
   ioLoop->queueInLoop(
       boost::bind(&TcpConnection::connectDestroyed, conn));
-  if (!ioLoop->isInLoopThread())
-  {
-    ioLoop->wakeup();
-  }
 }
 
