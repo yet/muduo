@@ -10,7 +10,6 @@
 
 #include <muduo/base/Logging.h>
 #include <muduo/base/Mutex.h>
-#include <muduo/base/Singleton.h>
 #include <muduo/net/Channel.h>
 #include <muduo/net/Poller.h>
 #include <muduo/net/SocketsOps.h>
@@ -74,7 +73,7 @@ EventLoop::EventLoop()
     wakeupChannel_(new Channel(this, wakeupFd_)),
     currentActiveChannel_(NULL)
 {
-  LOG_TRACE << "EventLoop created " << this << " in thread " << threadId_;
+  LOG_DEBUG << "EventLoop created " << this << " in thread " << threadId_;
   if (t_loopInThisThread)
   {
     LOG_FATAL << "Another EventLoop " << t_loopInThisThread
@@ -92,6 +91,8 @@ EventLoop::EventLoop()
 
 EventLoop::~EventLoop()
 {
+  LOG_DEBUG << "EventLoop " << this << " of thread " << threadId_
+            << " destructs in thread " << CurrentThread::tid();
   ::close(wakeupFd_);
   t_loopInThisThread = NULL;
 }
