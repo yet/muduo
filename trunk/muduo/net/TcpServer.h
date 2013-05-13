@@ -35,15 +35,22 @@ class TcpServer : boost::noncopyable
 {
  public:
   typedef boost::function<void(EventLoop*)> ThreadInitCallback;
+  enum Option
+  {
+    kNoReusePort,
+    kReusePort,
+  };
 
   //TcpServer(EventLoop* loop, const InetAddress& listenAddr);
   TcpServer(EventLoop* loop,
             const InetAddress& listenAddr,
-            const string& nameArg);
+            const string& nameArg,
+            Option option = kNoReusePort);
   ~TcpServer();  // force out-line dtor, for scoped_ptr members.
 
   const string& hostport() const { return hostport_; }
   const string& name() const { return name_; }
+  EventLoop* getLoop() const { return loop_; }
 
   /// Set the number of threads for handling input.
   ///
