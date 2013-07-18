@@ -53,17 +53,27 @@ this will build Muduo in {{{../build/release}}} , binaries and libraries are in 
 
 === Install ===
 
-By default, Muduo will be installed to your working directory in your home, not the system directory (/usr/local)
+{{{
+$ ./build.sh install
+}}}
+
+or
+
+{{{
+$ BUILD_TYPE=release ./build.sh install
+}}}
+
+By default, Muduo will be installed to your working directory in your home(../build/debug-install), not the system directory (/usr/local)
 {{{
 .
 |- muduo  # source directory
 |- build       # build directory
    |- debug    # build directory for debug version
    |- release  # build directory for release version
-|- debug-install  # install directory
-   |- include     # header files
-      |- muduo
-   |- lib         # libraries
+   |- debug-install  # install directory
+      |- include     # header files
+         |- muduo
+      |- lib         # libraries
 }}}
 
 === How to use Muduo as a library ===
