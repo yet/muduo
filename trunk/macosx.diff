@@ -1,7 +1,8 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 2c8880a..3c8c83f 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -9,19 +9,19 @@ endif()
+@@ -9,13 +9,14 @@ endif()
  set(CXX_FLAGS
   -g
   # -DVALGRIND
@@ -10,145 +11,290 @@ diff --git a/CMakeLists.txt b/CMakeLists.txt
   -D_FILE_OFFSET_BITS=64
   -Wall
   -Wextra
-  -Werror
+- -Werror
++ # -Werror
   -Wconversion
   -Wno-unused-parameter
-- -Wold-style-cast
-+ # -Wold-style-cast
++ -Wno-sign-conversion
+  -Wold-style-cast
   -Woverloaded-virtual
   -Wpointer-arith
-- -Wshadow
-+ # -Wshadow
-  -Wwrite-strings
-- -march=native
-+ -march=nocona
+@@ -24,17 +25,16 @@ set(CXX_FLAGS
+  -march=native
   # -MMD
   # -std=c++0x
-  -rdynamic
-@@ -31,7 +31,7 @@ if(CMAKE_BUILD_BITS EQUAL 32)
+- -rdynamic
+  )
+ if(CMAKE_BUILD_BITS EQUAL 32)
+   list(APPEND CXX_FLAGS "-m32")
  endif()
  string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CXX_FLAGS}")
  
 -set(CMAKE_CXX_COMPILER "g++")
-+set(CMAKE_CXX_COMPILER "g++4")
++set(CMAKE_CXX_COMPILER "clang++")
  #set(CMAKE_CXX_COMPILER "icpc")
  set(CMAKE_CXX_FLAGS_DEBUG "-O0")
- set(CMAKE_CXX_FLAGS_RELEASE "-O2 -finline-limit=1000 -DNDEBUG")
-diff --git a/examples/idleconnection/CMakeLists.txt b/examples/idleconnection/CMakeLists.txt
---- a/examples/idleconnection/CMakeLists.txt
-+++ b/examples/idleconnection/CMakeLists.txt
-@@ -1,4 +1,4 @@
--add_executable(idleconnection_echo echo.cc main.cc)
-+add_executable(idleconnection_echo EXCLUDE_FROM_ALL echo.cc main.cc)
- target_link_libraries(idleconnection_echo muduo_net)
+-set(CMAKE_CXX_FLAGS_RELEASE "-O2 -finline-limit=1000 -DNDEBUG")
++set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
+ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
  
- add_executable(idleconnection_echo2 sortedlist.cc)
-diff --git a/muduo/base/Timestamp.cc b/muduo/base/Timestamp.cc
---- a/muduo/base/Timestamp.cc
-+++ b/muduo/base/Timestamp.cc
-@@ -4,7 +4,7 @@
+diff --git a/examples/socks4a/tcprelay.cc b/examples/socks4a/tcprelay.cc
+index a4c6ec9..09a6a3a 100644
+--- a/examples/socks4a/tcprelay.cc
++++ b/examples/socks4a/tcprelay.cc
+@@ -1,6 +1,5 @@
+ #include "tunnel.h"
+ 
+-#include <malloc.h>
  #include <stdio.h>
- #define __STDC_FORMAT_MACROS
- #include <inttypes.h>
--#undef __STDC_FORMAT_MACROS
-+//#undef __STDC_FORMAT_MACROS
+ #include <sys/resource.h>
  
- #include <boost/static_assert.hpp>
+@@ -43,7 +42,6 @@ void onServerMessage(const TcpConnectionPtr& conn, Buffer* buf, Timestamp)
  
-diff --git a/muduo/base/tests/CMakeLists.txt b/muduo/base/tests/CMakeLists.txt
---- a/muduo/base/tests/CMakeLists.txt
-+++ b/muduo/base/tests/CMakeLists.txt
-@@ -10,7 +10,7 @@ target_link_libraries(blockingqueue_test muduo_base)
- add_executable(blockingqueue_bench BlockingQueue_bench.cc)
- target_link_libraries(blockingqueue_bench muduo_base)
+ void memstat()
+ {
+-  malloc_stats();
+ }
  
--add_executable(boundedblockingqueue_test BoundedBlockingQueue_test.cc)
-+add_executable(boundedblockingqueue_test EXCLUDE_FROM_ALL BoundedBlockingQueue_test.cc)
- target_link_libraries(boundedblockingqueue_test muduo_base)
+ int main(int argc, char* argv[])
+diff --git a/muduo/base/CMakeLists.txt b/muduo/base/CMakeLists.txt
+index 36d3b83..69a9661 100644
+--- a/muduo/base/CMakeLists.txt
++++ b/muduo/base/CMakeLists.txt
+@@ -16,7 +16,7 @@ set(base_SRCS
+   )
  
- add_executable(date_unittest Date_unittest.cc)
-diff --git a/muduo/net/Channel.cc b/muduo/net/Channel.cc
---- a/muduo/net/Channel.cc
-+++ b/muduo/net/Channel.cc
-@@ -21,6 +21,10 @@ const int Channel::kNoneEvent = 0;
- const int Channel::kReadEvent = POLLIN | POLLPRI;
- const int Channel::kWriteEvent = POLLOUT;
+ add_library(muduo_base ${base_SRCS})
+-target_link_libraries(muduo_base pthread rt)
++target_link_libraries(muduo_base pthread)
  
-+#ifndef POLLRDHUP
-+#define POLLRDHUP  0x2000
+ install(TARGETS muduo_base DESTINATION lib)
+ file(GLOB HEADERS "*.h")
+diff --git a/muduo/base/Condition.cc b/muduo/base/Condition.cc
+index 75bae96..11f291a 100644
+--- a/muduo/base/Condition.cc
++++ b/muduo/base/Condition.cc
+@@ -6,12 +6,20 @@
+ #include <muduo/base/Condition.h>
+ 
+ #include <errno.h>
++#include <sys/time.h>
+ 
+ // returns true if time out, false otherwise.
+ bool muduo::Condition::waitForSeconds(int seconds)
+ {
+   struct timespec abstime;
++#ifdef CLOCK_REALTIME
+   clock_gettime(CLOCK_REALTIME, &abstime);
++#else  // Mac OS X
++  struct timeval tv;
++  gettimeofday(&tv, NULL);
++  abstime.tv_sec = tv.tv_sec;
++  abstime.tv_nsec = tv.tv_usec * 1000;
 +#endif
-+
- Channel::Channel(EventLoop* loop, int fd__)
-   : loop_(loop),
-     fd_(fd__),
-diff --git a/muduo/net/Endian.h b/muduo/net/Endian.h
---- a/muduo/net/Endian.h
-+++ b/muduo/net/Endian.h
-@@ -13,6 +13,7 @@
+   abstime.tv_sec += seconds;
+   MutexLock::UnassignGuard ug(mutex_);
+   return ETIMEDOUT == pthread_cond_timedwait(&pcond_, mutex_.getPthreadMutex(), &abstime);
+diff --git a/muduo/base/LogFile.cc b/muduo/base/LogFile.cc
+index f06ffb1..d22c797 100644
+--- a/muduo/base/LogFile.cc
++++ b/muduo/base/LogFile.cc
+@@ -60,8 +60,11 @@ class LogFile::File : boost::noncopyable
  
- #include <stdint.h>
- #include <endian.h>
-+#include <byteswap.h>
+   size_t write(const char* logline, size_t len)
+   {
+-#undef fwrite_unlocked
+-    return ::fwrite_unlocked(logline, 1, len, fp_);
++#ifdef fwrite_unlocked
++    return fwrite_unlocked(logline, 1, len, fp_);
++#else
++    return fwrite(logline, 1, len, fp_);
++#endif
+   }
+ 
+   FILE* fp_;
+diff --git a/muduo/base/Logging.cc b/muduo/base/Logging.cc
+index f710072..8e74f77 100644
+--- a/muduo/base/Logging.cc
++++ b/muduo/base/Logging.cc
+@@ -36,7 +36,12 @@ __thread time_t t_lastSecond;
+ 
+ const char* strerror_tl(int savedErrno)
+ {
++#ifndef __MACH__
+   return strerror_r(savedErrno, t_errnobuf, sizeof t_errnobuf);
++#else
++  strerror_r(savedErrno, t_errnobuf, sizeof t_errnobuf);
++  return t_errnobuf;
++#endif
+ }
+ 
+ Logger::LogLevel initLogLevel()
+diff --git a/muduo/base/Thread.cc b/muduo/base/Thread.cc
+index afbec18..91fe0a7 100644
+--- a/muduo/base/Thread.cc
++++ b/muduo/base/Thread.cc
+@@ -17,7 +17,9 @@
+ #include <unistd.h>
+ #include <sys/syscall.h>
+ #include <sys/types.h>
++#ifndef __MACH__
+ #include <linux/unistd.h>
++#endif
  
  namespace muduo
  {
-@@ -23,48 +24,38 @@ namespace sockets
- 
- // the inline assembler code makes type blur,
- // so we disable warnings for a while.
--#if __GNUC_MINOR__ >= 6
--#pragma GCC diagnostic push
--#endif
--#pragma GCC diagnostic ignored "-Wconversion"
--#pragma GCC diagnostic ignored "-Wold-style-cast"
-+#if __BYTE_ORDER == __LITTLE_ENDIAN
- inline uint64_t hostToNetwork64(uint64_t host64)
+@@ -33,10 +35,17 @@ namespace CurrentThread
+ namespace detail
  {
--  return htobe64(host64);
-+  return bswap_64(host64);
- }
  
- inline uint32_t hostToNetwork32(uint32_t host32)
++#ifdef __MACH__
++pid_t gettid()
++{
++  return pthread_mach_thread_np(pthread_self());
++}
++#else
+ pid_t gettid()
  {
--  return htobe32(host32);
-+  return bswap_32(host32);
+   return static_cast<pid_t>(::syscall(SYS_gettid));
  }
++#endif
  
- inline uint16_t hostToNetwork16(uint16_t host16)
+ void afterFork()
  {
--  return htobe16(host16);
-+  return bswap_16(host16);
- }
+diff --git a/muduo/base/TimeZone.cc b/muduo/base/TimeZone.cc
+index 5fd9e28..008b931 100644
+--- a/muduo/base/TimeZone.cc
++++ b/muduo/base/TimeZone.cc
+@@ -8,7 +8,7 @@
+ #include <vector>
  
- inline uint64_t networkToHost64(uint64_t net64)
- {
--  return be64toh(net64);
-+  return bswap_64(net64);
- }
+ //#define _BSD_SOURCE
+-#include <endian.h>
++#include <muduo/net/Endian.h>
  
- inline uint32_t networkToHost32(uint32_t net32)
- {
--  return be32toh(net32);
-+  return bswap_32(net32);
- }
+ #include <stdint.h>
+ #include <stdio.h>
+@@ -278,7 +278,7 @@ struct tm TimeZone::toLocalTime(time_t seconds) const
+     ::gmtime_r(&localSeconds, &localTime); // FIXME: fromUtcTime
+     localTime.tm_isdst = local->isDst;
+     localTime.tm_gmtoff = local->gmtOffset;
+-    localTime.tm_zone = &data.abbreviation[local->arrbIdx];
++    localTime.tm_zone = const_cast<char*>(&data.abbreviation[local->arrbIdx]);
+   }
  
- inline uint16_t networkToHost16(uint16_t net16)
+   return localTime;
+diff --git a/muduo/base/tests/AsyncLogging_test.cc b/muduo/base/tests/AsyncLogging_test.cc
+index bd9fe59..e510fd4 100644
+--- a/muduo/base/tests/AsyncLogging_test.cc
++++ b/muduo/base/tests/AsyncLogging_test.cc
+@@ -4,6 +4,9 @@
+ 
+ #include <stdio.h>
+ #include <sys/resource.h>
++#ifdef __MACH__
++#include <libgen.h>  // basename()
++#endif
+ 
+ int kRollSize = 500*1000*1000;
+ 
+diff --git a/muduo/base/tests/LogFile_test.cc b/muduo/base/tests/LogFile_test.cc
+index e77d68d..d27d65e 100644
+--- a/muduo/base/tests/LogFile_test.cc
++++ b/muduo/base/tests/LogFile_test.cc
+@@ -1,5 +1,8 @@
+ #include <muduo/base/LogFile.h>
+ #include <muduo/base/Logging.h>
++#ifdef __MACH__
++#include <libgen.h>  // basename()
++#endif
+ 
+ boost::scoped_ptr<muduo::LogFile> g_logFile;
+ 
+diff --git a/muduo/net/CMakeLists.txt b/muduo/net/CMakeLists.txt
+index 232841a..6e68677 100644
+--- a/muduo/net/CMakeLists.txt
++++ b/muduo/net/CMakeLists.txt
+@@ -9,7 +9,6 @@ set(net_SRCS
+   InetAddress.cc
+   Poller.cc
+   poller/DefaultPoller.cc
+-  poller/EPollPoller.cc
+   poller/PollPoller.cc
+   Socket.cc
+   SocketsOps.cc
+diff --git a/muduo/net/Channel.cc b/muduo/net/Channel.cc
+index d1df80a..7b31926 100644
+--- a/muduo/net/Channel.cc
++++ b/muduo/net/Channel.cc
+@@ -93,6 +93,9 @@ void Channel::handleEventWithGuard(Timestamp receiveTime)
+   {
+     if (errorCallback_) errorCallback_();
+   }
++#ifndef POLLRDHUP
++  const int POLLRDHUP = 0;
++#endif
+   if (revents_ & (POLLIN | POLLPRI | POLLRDHUP))
+   {
+     if (readCallback_) readCallback_(receiveTime);
+@@ -116,8 +119,10 @@ string Channel::reventsToString() const
+     oss << "OUT ";
+   if (revents_ & POLLHUP)
+     oss << "HUP ";
++#ifdef POLLRDHUP
+   if (revents_ & POLLRDHUP)
+     oss << "RDHUP ";
++#endif
+   if (revents_ & POLLERR)
+     oss << "ERR ";
+   if (revents_ & POLLNVAL)
+diff --git a/muduo/net/Endian.h b/muduo/net/Endian.h
+index 0ca95e9..fa085bd 100644
+--- a/muduo/net/Endian.h
++++ b/muduo/net/Endian.h
+@@ -12,7 +12,28 @@
+ #define MUDUO_NET_ENDIAN_H
+ 
+ #include <stdint.h>
++
++#ifdef __MACH__
++#include <libkern/OSByteOrder.h>
++ 
++#define htobe16(x) OSSwapHostToBigInt16(x)
++#define htole16(x) OSSwapHostToLittleInt16(x)
++#define be16toh(x) OSSwapBigToHostInt16(x)
++#define le16toh(x) OSSwapLittleToHostInt16(x)
++ 
++#define htobe32(x) OSSwapHostToBigInt32(x)
++#define htole32(x) OSSwapHostToLittleInt32(x)
++#define be32toh(x) OSSwapBigToHostInt32(x)
++#define le32toh(x) OSSwapLittleToHostInt32(x)
++ 
++#define htobe64(x) OSSwapHostToBigInt64(x)
++#define htole64(x) OSSwapHostToLittleInt64(x)
++#define be64toh(x) OSSwapBigToHostInt64(x)
++#define le64toh(x) OSSwapLittleToHostInt64(x)
++#else
+ #include <endian.h>
++#endif
++
+ 
+ namespace muduo
  {
--  return be16toh(net16);
-+  return bswap_16(net16);
- }
--#if __GNUC_MINOR__ >= 6
--#pragma GCC diagnostic pop
--#else
+@@ -60,8 +81,8 @@ inline uint16_t networkToHost16(uint16_t net16)
+ #if __GNUC_MINOR__ >= 6
+ #pragma GCC diagnostic pop
+ #else
 -#pragma GCC diagnostic error "-Wconversion"
 -#pragma GCC diagnostic error "-Wold-style-cast"
++//#pragma GCC diagnostic error "-Wconversion"
++//#pragma GCC diagnostic error "-Wold-style-cast"
  #endif
  
--
- }
- }
- }
+ 
 diff --git a/muduo/net/EventLoop.cc b/muduo/net/EventLoop.cc
+index 51dc13d..b8728ea 100644
 --- a/muduo/net/EventLoop.cc
 +++ b/muduo/net/EventLoop.cc
 @@ -18,7 +18,8 @@
@@ -250,6 +396,7 @@ diff --git a/muduo/net/EventLoop.cc b/muduo/net/EventLoop.cc
    {
      LOG_ERROR << "EventLoop::handleRead() reads " << n << " bytes instead of 8";
 diff --git a/muduo/net/EventLoop.h b/muduo/net/EventLoop.h
+index 9d0085b..8420b22 100644
 --- a/muduo/net/EventLoop.h
 +++ b/muduo/net/EventLoop.h
 @@ -130,7 +130,7 @@ class EventLoop : boost::noncopyable
@@ -262,6 +409,7 @@ diff --git a/muduo/net/EventLoop.h b/muduo/net/EventLoop.h
    // we don't expose Channel to client.
    boost::scoped_ptr<Channel> wakeupChannel_;
 diff --git a/muduo/net/InetAddress.cc b/muduo/net/InetAddress.cc
+index 368b837..f59be46 100644
 --- a/muduo/net/InetAddress.cc
 +++ b/muduo/net/InetAddress.cc
 @@ -17,9 +17,7 @@
@@ -275,9 +423,20 @@ diff --git a/muduo/net/InetAddress.cc b/muduo/net/InetAddress.cc
  //     /* Structure describing an Internet socket address.  */
  //     struct sockaddr_in {
 diff --git a/muduo/net/SocketsOps.cc b/muduo/net/SocketsOps.cc
+index 24a4433..266f508 100644
 --- a/muduo/net/SocketsOps.cc
 +++ b/muduo/net/SocketsOps.cc
-@@ -59,7 +59,6 @@ void setNonBlockAndCloseOnExec(int sockfd)
+@@ -17,6 +17,9 @@
+ #include <stdio.h>  // snprintf
+ #include <strings.h>  // bzero
+ #include <sys/socket.h>
++#ifdef __MACH__
++#include <sys/uio.h>  // readv
++#endif
+ #include <unistd.h>
+ 
+ using namespace muduo;
+@@ -59,7 +62,6 @@ void setNonBlockAndCloseOnExec(int sockfd)
  int sockets::createNonblockingOrDie()
  {
    // socket
@@ -285,7 +444,7 @@ diff --git a/muduo/net/SocketsOps.cc b/muduo/net/SocketsOps.cc
    int sockfd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
    if (sockfd < 0)
    {
-@@ -67,13 +66,6 @@ int sockets::createNonblockingOrDie()
+@@ -67,13 +69,6 @@ int sockets::createNonblockingOrDie()
    }
  
    setNonBlockAndCloseOnExec(sockfd);
@@ -299,7 +458,7 @@ diff --git a/muduo/net/SocketsOps.cc b/muduo/net/SocketsOps.cc
    return sockfd;
  }
  
-@@ -98,13 +90,8 @@ void sockets::listenOrDie(int sockfd)
+@@ -98,13 +93,8 @@ void sockets::listenOrDie(int sockfd)
  int sockets::accept(int sockfd, struct sockaddr_in* addr)
  {
    socklen_t addrlen = static_cast<socklen_t>(sizeof *addr);
@@ -314,6 +473,7 @@ diff --git a/muduo/net/SocketsOps.cc b/muduo/net/SocketsOps.cc
    {
      int savedErrno = errno;
 diff --git a/muduo/net/TimerQueue.cc b/muduo/net/TimerQueue.cc
+index 7a95119..707ed31 100644
 --- a/muduo/net/TimerQueue.cc
 +++ b/muduo/net/TimerQueue.cc
 @@ -16,8 +16,6 @@
@@ -457,6 +617,7 @@ diff --git a/muduo/net/TimerQueue.cc b/muduo/net/TimerQueue.cc
  
  bool TimerQueue::insert(Timer* timer)
 diff --git a/muduo/net/TimerQueue.h b/muduo/net/TimerQueue.h
+index 3608928..e2f1788 100644
 --- a/muduo/net/TimerQueue.h
 +++ b/muduo/net/TimerQueue.h
 @@ -51,6 +51,9 @@ class TimerQueue : boost::noncopyable
@@ -488,23 +649,23 @@ diff --git a/muduo/net/TimerQueue.h b/muduo/net/TimerQueue.h
    TimerList timers_;
  
    // for cancel()
-diff --git a/muduo/net/poller/EPollPoller.cc b/muduo/net/poller/EPollPoller.cc
---- a/muduo/net/poller/EPollPoller.cc
-+++ b/muduo/net/poller/EPollPoller.cc
-@@ -26,7 +26,6 @@ using namespace muduo::net;
- BOOST_STATIC_ASSERT(EPOLLIN == POLLIN);
- BOOST_STATIC_ASSERT(EPOLLPRI == POLLPRI);
- BOOST_STATIC_ASSERT(EPOLLOUT == POLLOUT);
--BOOST_STATIC_ASSERT(EPOLLRDHUP == POLLRDHUP);
- BOOST_STATIC_ASSERT(EPOLLERR == POLLERR);
- BOOST_STATIC_ASSERT(EPOLLHUP == POLLHUP);
+diff --git a/muduo/net/poller/DefaultPoller.cc b/muduo/net/poller/DefaultPoller.cc
+index f42f5a4..a6a3133 100644
+--- a/muduo/net/poller/DefaultPoller.cc
++++ b/muduo/net/poller/DefaultPoller.cc
+@@ -16,6 +16,9 @@ using namespace muduo::net;
  
-@@ -39,7 +38,7 @@ const int kDeleted = 2;
- 
- EPollPoller::EPollPoller(EventLoop* loop)
-   : Poller(loop),
--    epollfd_(::epoll_create1(EPOLL_CLOEXEC)),
-+    epollfd_(::epoll_create(32)),
-     events_(kInitEventListSize)
+ Poller* Poller::newDefaultPoller(EventLoop* loop)
  {
-   if (epollfd_ < 0)
++#ifdef __MACH__
++  return new PollPoller(loop);
++#else
+   if (::getenv("MUDUO_USE_POLL"))
+   {
+     return new PollPoller(loop);
+@@ -24,4 +27,5 @@ Poller* Poller::newDefaultPoller(EventLoop* loop)
+   {
+     return new EPollPoller(loop);
+   }
++#endif
+ }
