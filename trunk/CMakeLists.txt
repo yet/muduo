@@ -10,6 +10,7 @@ set(CXX_FLAGS
  -g
  # -DVALGRIND
  # -DMUDUO_STD_STRING
+ -DCHECK_PTHREAD_RETURN_VALUE
  -D_FILE_OFFSET_BITS=64
  -Wall
  -Wextra
@@ -32,7 +33,6 @@ endif()
 string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CXX_FLAGS}")
 
 set(CMAKE_CXX_COMPILER "g++")
-#set(CMAKE_CXX_COMPILER "icpc")
 set(CMAKE_CXX_FLAGS_DEBUG "-O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -finline-limit=1000 -DNDEBUG")
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
@@ -46,6 +46,14 @@ find_library(CARES_LIBRARY NAMES cares)
 find_path(MHD_INCLUDE_DIR microhttpd.h)
 find_library(MHD_LIBRARY NAMES microhttpd)
 find_library(BOOSTTEST_LIBRARY NAMES boost_unit_test_framework)
+find_library(BOOSTPO_LIBRARY NAMES boost_program_options)
+find_path(TCMALLOC_INCLUDE_DIR google/heap-profiler.h)
+find_library(TCMALLOC_LIBRARY NAMES tcmalloc_and_profiler)
+if(TCMALLOC_INCLUDE_DIR AND TCMALLOC_LIBRARY)
+  message(STATUS "found tcmalloc")
+else()
+  message(STATUS "not found tcmalloc")
+endif()
 
 include_directories(${Boost_INCLUDE_DIRS})
 
