@@ -102,7 +102,7 @@ void EventLoop::loop()
   assert(!looping_);
   assertInLoopThread();
   looping_ = true;
-  quit_ = false;
+  quit_ = false;  // FIXME: what if someone calls quit() before loop() ?
   LOG_TRACE << "EventLoop " << this << " start looping";
 
   while (!quit_)
@@ -134,6 +134,9 @@ void EventLoop::loop()
 void EventLoop::quit()
 {
   quit_ = true;
+  // There is a chance that loop() just executes while(!quit_) and exists,
+  // then EventLoop destructs, then we are accessing an invalid object.
+  // Can be fixed using mutex_ in both places.
   if (!isInLoopThread())
   {
     wakeup();
