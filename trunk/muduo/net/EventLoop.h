@@ -51,6 +51,10 @@ class EventLoop : boost::noncopyable
   ///
   void loop();
 
+  /// Quits loop.
+  ///
+  /// This is not 100% thread safe, if you call through a raw pointer,
+  /// better to call through shared_ptr<EventLoop> for 100% safety.
   void quit();
 
   ///
@@ -133,7 +137,7 @@ class EventLoop : boost::noncopyable
   typedef std::vector<Channel*> ChannelList;
 
   bool looping_; /* atomic */
-  bool quit_; /* atomic */
+  bool quit_; /* atomic and shared between threads, okay on x86, I guess. */
   bool eventHandling_; /* atomic */
   bool callingPendingFunctors_; /* atomic */
   int64_t iteration_;
