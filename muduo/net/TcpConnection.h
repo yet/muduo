@@ -58,11 +58,12 @@ class TcpConnection : boost::noncopyable,
   bool connected() const { return state_ == kConnected; }
 
   // void send(string&& message); // C++11
-  void send(const void* message, size_t len);
+  void send(const void* message, int len);
   void send(const StringPiece& message);
   // void send(Buffer&& message); // C++11
   void send(Buffer* message);  // this one will swap data
   void shutdown(); // NOT thread safe, no simultaneous calling
+  void forceClose();
   void setTcpNoDelay(bool on);
 
   void setContext(const boost::any& context)
@@ -112,6 +113,7 @@ class TcpConnection : boost::noncopyable,
   void sendInLoop(const StringPiece& message);
   void sendInLoop(const void* message, size_t len);
   void shutdownInLoop();
+  void forceCloseInLoop();
   void setState(StateE s) { state_ = s; }
 
   EventLoop* loop_;

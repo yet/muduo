@@ -69,23 +69,9 @@ TcpConnection::~TcpConnection()
             << " fd=" << channel_->fd();
 }
 
-void TcpConnection::send(const void* data, size_t len)
+void TcpConnection::send(const void* data, int len)
 {
-  if (state_ == kConnected)
-  {
-    if (loop_->isInLoopThread())
-    {
-      sendInLoop(data, len);
-    }
-    else
-    {
-      string message(static_cast<const char*>(data), len);
-      loop_->runInLoop(
-          boost::bind(&TcpConnection::sendInLoop,
-                      this,     // FIXME
-                      message));
-    }
-  }
+  send(StringPiece(static_cast<const char*>(data), len));
 }
 
 void TcpConnection::send(const StringPiece& message)
@@ -206,6 +192,26 @@ void TcpConnection::shutdownInLoop()
   {
     // we are not writing
     socket_->shutdownWrite();
+  }
+}
+
+void TcpConnection::forceClose()
+{
+  // FIXME: use compare and swap
+  if (state_ == kConnected)
+  {
+    setState(kDisconnecting);
+    loop_->queueInLoop(boost::bind(&TcpConnection::forceCloseInLoop, shared_from_this()));
+  }
+}
+
+void TcpConnection::forceCloseInLoop()
+{
+  loop_->assertInLoopThread();
+  if (state_ == kConnected || state_ == kDisconnecting)
+  {
+    // as if we received 0 byte in handleRead();
+    handleClose();
   }
 }
 
