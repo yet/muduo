@@ -54,11 +54,13 @@ void RpcChannel::CallMethod(const ::google::protobuf::MethodDescriptor* method,
   message.set_service(method->service()->name());
   message.set_method(method->name());
   message.set_request(request->SerializeAsString()); // FIXME: error check
-  RpcCodec::send(conn_, message);
 
   OutstandingCall out = { response, done };
+  {
   MutexLockGuard lock(mutex_);
   outstandings_[id] = out;
+  }
+  codec_.send(conn_, message);
 }
 
 void RpcChannel::onMessage(const TcpConnectionPtr& conn,
@@ -150,7 +152,7 @@ void RpcChannel::doneCallback(::google::protobuf::Message* response, int64_t id)
   message.set_type(RESPONSE);
   message.set_id(id);
   message.set_response(response->SerializeAsString()); // FIXME: error check
-  RpcCodec::send(conn_, message);
+  codec_.send(conn_, message);
   delete response;
 }
 
