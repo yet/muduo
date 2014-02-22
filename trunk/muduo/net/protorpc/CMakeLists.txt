@@ -11,11 +11,15 @@ add_library(muduo_protorpc_wire rpc.pb.cc RpcCodec.cc)
 set_target_properties(muduo_protorpc_wire PROPERTIES COMPILE_FLAGS "-Wno-error=shadow")
 
 add_library(muduo_protorpc_wire_cpp11 rpc.pb.cc RpcCodec.cc)
-set_target_properties(muduo_protorpc_wire_cpp11 PROPERTIES COMPILE_FLAGS "-Wno-error=shadow")
+set_target_properties(muduo_protorpc_wire_cpp11 PROPERTIES COMPILE_FLAGS "-std=c++0x -Wno-error=shadow")
+
+add_executable(protorpc_wire_test RpcCodec_test.cc)
+target_link_libraries(protorpc_wire_test muduo_protorpc_wire muduo_protobuf_codec)
+set_target_properties(protorpc_wire_test PROPERTIES COMPILE_FLAGS "-Wno-error=shadow")
 
 add_library(muduo_protorpc RpcChannel.cc RpcServer.cc)
 set_target_properties(muduo_protorpc PROPERTIES COMPILE_FLAGS "-Wno-error=shadow")
-target_link_libraries(muduo_protorpc muduo_protorpc_wire muduo_net protobuf z)
+target_link_libraries(muduo_protorpc muduo_protorpc_wire muduo_protobuf_codec muduo_net protobuf z)
 
 install(TARGETS muduo_protorpc_wire muduo_protorpc DESTINATION lib)
 install(TARGETS muduo_protorpc_wire_cpp11 DESTINATION lib)
