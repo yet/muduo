@@ -12,10 +12,12 @@ using namespace muduo;
 LogFile::LogFile(const string& basename,
                  size_t rollSize,
                  bool threadSafe,
-                 int flushInterval)
+                 int flushInterval,
+                 int checkEveryN)
   : basename_(basename),
     rollSize_(rollSize),
     flushInterval_(flushInterval),
+    checkEveryN_(checkEveryN),
     count_(0),
     mutex_(threadSafe ? new MutexLock : NULL),
     startOfPeriod_(0),
@@ -66,7 +68,8 @@ void LogFile::append_unlocked(const char* logline, int len)
   }
   else
   {
-    if (count_ > kCheckTimeRoll_)
+    ++count_;
+    if (count_ >= checkEveryN_)
     {
       count_ = 0;
       time_t now = ::time(NULL);
@@ -81,14 +84,10 @@ void LogFile::append_unlocked(const char* logline, int len)
         file_->flush();
       }
     }
-    else
-    {
-      ++count_;
-    }
   }
 }
 
-void LogFile::rollFile()
+bool LogFile::rollFile()
 {
   time_t now = 0;
   string filename = getLogFileName(basename_, &now);
@@ -100,7 +99,9 @@ void LogFile::rollFile()
     lastFlush_ = now;
     startOfPeriod_ = start;
     file_.reset(new FileUtil::AppendFile(filename));
+    return true;
   }
+  return false;
 }
 
 string LogFile::getLogFileName(const string& basename, time_t* now)
