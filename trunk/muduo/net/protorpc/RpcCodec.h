@@ -12,7 +12,7 @@
 #define MUDUO_NET_PROTORPC_RPCCODEC_H
 
 #include <muduo/base/Timestamp.h>
-#include <muduo/net/protobuf/codec.h>
+#include <muduo/net/protobuf/ProtobufCodecLite.h>
 
 #include <boost/function.hpp>
 #include <boost/noncopyable.hpp>
@@ -28,6 +28,8 @@ class TcpConnection;
 typedef boost::shared_ptr<TcpConnection> TcpConnectionPtr;
 
 class RpcMessage;
+typedef boost::shared_ptr<RpcMessage> RpcMessagePtr;
+extern const char rpctag[];// = "RPC0";
 
 // wire format
 //
@@ -39,36 +41,7 @@ class RpcMessage;
 // checksum  4-byte  adler32 of "RPC0"+payload
 //
 
-// TODO: re-implement with typedef of ProtobufCodecT
-class RpcCodec : boost::noncopyable
-{
- public:
-  typedef boost::function<void (const TcpConnectionPtr&,
-                                const RpcMessage&,
-                                Timestamp)> ProtobufMessageCallback;
-
-  typedef ProtobufCodec::ErrorCallback ErrorCallback;
-
-  explicit RpcCodec(const ProtobufMessageCallback& messageCb,
-                    const ErrorCallback& errorCb = ProtobufCodec::defaultErrorCallback);
-
-  void send(const TcpConnectionPtr& conn,
-            const RpcMessage& message);
-
-  void onMessage(const TcpConnectionPtr& conn,
-                 Buffer* buf,
-                 Timestamp receiveTime);
-
-  // internal
-  void onRpcMessage(const TcpConnectionPtr&,
-                    const MessagePtr&,
-                    Timestamp);
-  void fillEmptyBuffer(muduo::net::Buffer* buf, const RpcMessage& message);
-
- private:
-  ProtobufMessageCallback messageCallback_;
-  ProtobufCodec codec_;
-};
+typedef ProtobufCodecLiteT<RpcMessage, rpctag> RpcCodec;
 
 }
 }

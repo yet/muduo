@@ -36,7 +36,7 @@ class Request : public boost::enable_shared_from_this<Request>,
   typedef boost::function<void(const char*, int)> DataCallback;
   typedef boost::function<void(Request*, int)> DoneCallback;
 
-  Request(Curl*, muduo::StringPiece url);
+  Request(Curl*, const char* url);
   ~Request();
 
   void setDataCallback(const DataCallback& cb)
@@ -50,7 +50,7 @@ class Request : public boost::enable_shared_from_this<Request>,
 
   // void allowRedirect(int redirects);
   void headerOnly();
-  void setRange(muduo::StringPiece range);
+  void setRange(const muduo::StringArg range);
 
   template<typename OPT>
   int setopt(OPT opt, long p)
@@ -118,7 +118,7 @@ class Curl : boost::noncopyable
   explicit Curl(muduo::net::EventLoop* loop);
   ~Curl();
 
-  RequestPtr getUrl(muduo::StringPiece url); // must be null-terminated string
+  RequestPtr getUrl(muduo::StringArg url);
 
   static void initialize(Option opt = kCURLnossl);
 

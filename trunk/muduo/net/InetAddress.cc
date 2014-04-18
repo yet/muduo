@@ -51,10 +51,10 @@ InetAddress::InetAddress(uint16_t port, bool lookbackOnly)
   addr_.sin_port = sockets::hostToNetwork16(port);
 }
 
-InetAddress::InetAddress(const StringPiece& ip, uint16_t port)
+InetAddress::InetAddress(StringArg ip, uint16_t port)
 {
   bzero(&addr_, sizeof addr_);
-  sockets::fromIpPort(ip.data(), port, &addr_);
+  sockets::fromIpPort(ip.c_str(), port, &addr_);
 }
 
 string InetAddress::toIpPort() const
@@ -73,7 +73,7 @@ string InetAddress::toIp() const
 
 static __thread char t_resolveBuffer[64 * 1024];
 
-bool InetAddress::resolve(const char* hostname, InetAddress* out)
+bool InetAddress::resolve(StringArg hostname, InetAddress* out)
 {
   assert(out != NULL);
   struct hostent hent;
@@ -81,7 +81,7 @@ bool InetAddress::resolve(const char* hostname, InetAddress* out)
   int herrno = 0;
   bzero(&hent, sizeof(hent));
 
-  int ret = gethostbyname_r(hostname, &hent, t_resolveBuffer, sizeof t_resolveBuffer, &he, &herrno);
+  int ret = gethostbyname_r(hostname.c_str(), &hent, t_resolveBuffer, sizeof t_resolveBuffer, &he, &herrno);
   if (ret == 0 && he != NULL)
   {
     assert(he->h_addrtype == AF_INET && he->h_length == sizeof(uint32_t));
