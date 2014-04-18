@@ -1,7 +1,7 @@
 #undef NDEBUG
 #include <muduo/net/protorpc/RpcCodec.h>
 #include <muduo/net/protorpc/rpc.pb.h>
-#include <muduo/net/protobuf/codec.h>
+#include <muduo/net/protobuf/ProtobufCodecLite.h>
 #include <muduo/net/Buffer.h>
 
 #include <stdio.h>
@@ -10,8 +10,8 @@ using namespace muduo;
 using namespace muduo::net;
 
 void rpcMessageCallback(const TcpConnectionPtr&,
-                     const RpcMessage&,
-                     Timestamp)
+                        const RpcMessagePtr&,
+                        Timestamp)
 {
 }
 
@@ -34,6 +34,8 @@ void print(const Buffer& buf)
   }
 }
 
+char rpctag[] = "RPC0";
+
 int main()
 {
   RpcMessage message;
@@ -51,7 +53,7 @@ int main()
   }
 
   {
-  ProtobufCodec codec(&RpcMessage::default_instance(), "RPC0", messageCallback);
+  ProtobufCodecLite codec(&RpcMessage::default_instance(), "RPC0", messageCallback);
   codec.fillEmptyBuffer(&buf2, message);
   print(buf2);
   s2 = buf2.toStringPiece().as_string();
@@ -66,7 +68,7 @@ int main()
 
   {
   Buffer buf;
-  ProtobufCodec codec(&RpcMessage::default_instance(), "XYZ", messageCallback);
+  ProtobufCodecLite codec(&RpcMessage::default_instance(), "XYZ", messageCallback);
   codec.fillEmptyBuffer(&buf, message);
   print(buf);
   s2 = buf.toStringPiece().as_string();
