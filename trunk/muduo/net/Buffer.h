@@ -79,6 +79,7 @@ class Buffer : public muduo::copyable
 
   const char* findCRLF() const
   {
+    // FIXME: replace with memmem()?
     const char* crlf = std::search(peek(), beginWrite(), kCRLF, kCRLF+2);
     return crlf == beginWrite() ? NULL : crlf;
   }
@@ -87,6 +88,7 @@ class Buffer : public muduo::copyable
   {
     assert(peek() <= start);
     assert(start <= beginWrite());
+    // FIXME: replace with memmem()?
     const char* crlf = std::search(start, beginWrite(), kCRLF, kCRLF+2);
     return crlf == beginWrite() ? NULL : crlf;
   }
@@ -101,7 +103,7 @@ class Buffer : public muduo::copyable
   {
     assert(peek() <= start);
     assert(start <= beginWrite());
-    const void* eol = memchr(start, '\n', readableBytes());
+    const void* eol = memchr(start, '\n', beginWrite() - start);
     return static_cast<const char*>(eol);
   }
 
