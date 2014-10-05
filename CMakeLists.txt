@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 
-project(muduo CXX)
+project(muduo C CXX)
+
+enable_testing()
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug")
@@ -50,6 +52,8 @@ find_library(BOOSTTEST_LIBRARY NAMES boost_unit_test_framework)
 find_library(BOOSTPO_LIBRARY NAMES boost_program_options)
 find_path(TCMALLOC_INCLUDE_DIR google/heap-profiler.h)
 find_library(TCMALLOC_LIBRARY NAMES tcmalloc_and_profiler)
+find_path(HIREDIS_INCLUDE_DIR hiredis/hiredis.h)
+find_library(HIREDIS_LIBRARY NAMES hiredis)
 
 if(CARES_INCLUDE_DIR AND CARES_LIBRARY)
   message(STATUS "found cares")
@@ -65,6 +69,9 @@ if(TCMALLOC_INCLUDE_DIR AND TCMALLOC_LIBRARY)
 endif()
 if(ZLIB_FOUND)
   message(STATUS "found zlib")
+endif()
+if(HIREDIS_INCLUDE_DIR AND HIREDIS_LIBRARY)
+  message(STATUS "found hiredis")
 endif()
 
 include_directories(${Boost_INCLUDE_DIRS})
