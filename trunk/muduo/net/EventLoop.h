@@ -13,6 +13,7 @@
 
 #include <vector>
 
+#include <boost/any.hpp>
 #include <boost/function.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -126,6 +127,15 @@ class EventLoop : boost::noncopyable
   // bool callingPendingFunctors() const { return callingPendingFunctors_; }
   bool eventHandling() const { return eventHandling_; }
 
+  void setContext(const boost::any& context)
+  { context_ = context; }
+
+  const boost::any& getContext() const
+  { return context_; }
+
+  boost::any* getMutableContext()
+  { return &context_; }
+
   static EventLoop* getEventLoopOfCurrentThread();
 
  private:
@@ -150,8 +160,12 @@ class EventLoop : boost::noncopyable
   // unlike in TimerQueue, which is an internal class,
   // we don't expose Channel to client.
   boost::scoped_ptr<Channel> wakeupChannel_;
+  boost::any context_;
+
+  // scratch variables
   ChannelList activeChannels_;
   Channel* currentActiveChannel_;
+
   MutexLock mutex_;
   std::vector<Functor> pendingFunctors_; // @GuardedBy mutex_
 };
